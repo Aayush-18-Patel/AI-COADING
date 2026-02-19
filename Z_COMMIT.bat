@@ -1,11 +1,16 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-:: Path to private repo
-set INNER_REPO=E:\JG-main\Z_OTHER\AI-COADING
+:: ----------------------------------------
+:: YOUR PUBLIC GITHUB REPO (ALWAYS USED)
+:: ----------------------------------------
+set GITHUB_URL=https://github.com/Aayush-18-Patel/AI-COADING/
+
+:: Path to your local repo
+set INNER_REPO=D:\AI-COADING
 
 echo ==========================================
-echo     AUTO COMMIT (MAIN + CAPSTONE)
+echo      AUTO COMMIT (MAIN + CAPSTONE)
 echo ==========================================
 
 :: Timestamp
@@ -22,20 +27,65 @@ set commitmsg=Date :- %dd%-%mm%-%yyyy%--- Time :- %hh%:%mn%
 echo Commit Message: "%commitmsg%"
 echo.
 
-:: ---------- INNER CAPSTONE REPO (SHARED SAFE MODE) ----------
-echo Committing CAPSTONE Repo...
+:: --------- NAVIGATE TO REPO ---------
 pushd "%INNER_REPO%"
 
-for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD') do set innerbranch=%%b
+:: --------- FIRST TIME SETUP ---------
+if not exist ".git" (
+    echo.
+    echo ======================================================
+    echo        FIRST TIME SETUP – CONFIGURING REPOSITORY
+    echo ======================================================
+    echo.
 
+    git init
+
+    echo Adding GitHub remote...
+    git remote add origin "%GITHUB_URL%"
+
+    echo Fetching branches...
+    git fetch origin
+
+    echo Checking for default branch...
+    git rev-parse --verify origin/main >nul 2>&1
+    if !errorlevel! == 0 (
+        set branch=main
+    ) else (
+        git rev-parse --verify origin/master >nul 2>&1
+        if !errorlevel! == 0 (
+            set branch=master
+        ) else (
+            echo No main/master found. Creating main...
+            set branch=main
+            git checkout -b main
+            goto CONTINUE_SETUP
+        )
+    )
+
+    echo Creating local branch and syncing...
+    git checkout -b %branch%
+    git pull origin %branch%
+
+    :CONTINUE_SETUP
+    echo Setup complete!
+    echo.
+)
+
+:: --------- DETECT ACTIVE BRANCH ---------
+for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD') do set activebranch=%%b
+
+echo Using Branch: %activebranch%
+echo.
+
+:: --------- AUTO COMMIT ---------
 git add .
 git diff --cached --quiet || git commit -m "%commitmsg%"
 
 echo Pulling latest changes...
-git pull origin %innerbranch% --rebase
+git pull origin %activebranch% --rebase
 
-echo Pushing to remote...
-git push origin %innerbranch%
+echo Pushing...
+git push origin %activebranch%
 
 popd
 pause
